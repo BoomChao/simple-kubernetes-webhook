@@ -1,5 +1,7 @@
 # simple-kubernetes-webhook
 
+>| clone 自开源地址 https://github.com/slackhq/simple-kubernetes-webhook/tree/main
+
 This is a simple [Kubernetes admission webhook](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/). It is meant to be used as a validating and mutating admission webhook only and does not support any controller logic. It has been developed as a simple Go web service without using any framework or boilerplate such as kubebuilder.
 
 This project is aimed at illustrating how to build a fully functioning admission webhook in the simplest way possible. Most existing examples found on the web rely on heavy machinery using powerful frameworks, yet fail to illustrate how to implement a lightweight webhook that can do much needed actions such as rejecting a pod for compliance reasons, or inject helpful environment variables.
