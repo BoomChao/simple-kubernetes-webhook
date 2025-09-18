@@ -42,6 +42,21 @@ func (a Admitter) MutatePodReview() (*admissionv1.AdmissionReview, error) {
 	return patchReviewResponse(a.Request.UID, patch)
 }
 
+func (a Admitter) MutateNodeReview() (*admissionv1.AdmissionReview, error) {
+	node, err := a.Node()
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse node from request: %v", err)
+	}
+
+	m := mutation.NewMutator(a.Logger)
+	patch, err := m.MutateNodePatch(node)
+	if err != nil {
+		return nil, fmt.Errorf("cannot mutate node: %v", err)
+	}
+
+	return patchReviewResponse(a.Request.UID, patch)
+}
+
 // MutatePodReview takes an admission request and validates the pod within
 // it returns an admission review
 func (a Admitter) ValidatePodReview() (*admissionv1.AdmissionReview, error) {
@@ -77,6 +92,19 @@ func (a Admitter) Pod() (*corev1.Pod, error) {
 	}
 
 	return &p, nil
+}
+
+func (a Admitter) Node() (*corev1.Node, error) {
+	if a.Request.Kind.Kind != "Node" {
+		return nil, fmt.Errorf("only nodes are supported here")
+	}
+
+	n := corev1.Node{}
+	if err := json.Unmarshal(a.Request.Object.Raw, &n); err != nil {
+		return nil, err
+	}
+
+	return &n, nil
 }
 
 // reviewResponse TODO: godoc

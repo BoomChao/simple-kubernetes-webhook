@@ -24,6 +24,11 @@ type podMutator interface {
 	Name() string
 }
 
+type nodeMutator interface {
+	Mutate(*corev1.Node) (*corev1.Node, error)
+	Name() string
+}
+
 // MutatePodPatch returns a json patch containing all the mutations needed for
 // a given pod
 func (m *Mutator) MutatePodPatch(pod *corev1.Pod) ([]byte, error) {
@@ -56,6 +61,36 @@ func (m *Mutator) MutatePodPatch(pod *corev1.Pod) ([]byte, error) {
 
 	// generate json patch
 	patch, err := jsondiff.Compare(pod, mpod)
+	if err != nil {
+		return nil, err
+	}
+
+	patchb, err := json.Marshal(patch)
+	if err != nil {
+		return nil, err
+	}
+
+	return patchb, nil
+}
+
+func (m *Mutator) MutateNodePatch(node *corev1.Node) ([]byte, error) {
+	log := logrus.WithField("node_name", node.Name)
+
+	mutations := []nodeMutator{
+		&nodeCap{Logger: log},
+	}
+
+	mNode := node.DeepCopy()
+	for _, m := range mutations {
+		var err error
+		mNode, err = m.Mutate(mNode)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// generate json patch
+	patch, err := jsondiff.Compare(node, mNode)
 	if err != nil {
 		return nil, err
 	}

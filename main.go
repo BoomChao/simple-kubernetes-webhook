@@ -19,6 +19,7 @@ func main() {
 	http.HandleFunc("/validate-pods", ServeValidatePods)
 	http.HandleFunc("/mutate-pods", ServeMutatePods)
 	http.HandleFunc("/health", ServeHealth)
+	http.HandleFunc("/mutate-nodes", ServeMutateNodes)
 
 	// start the server
 	// listens to clear text http on port 8080 unless TLS env var is set to "true"
@@ -79,9 +80,7 @@ func ServeValidatePods(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", jout)
 }
 
-// ServeMutatePods returns an admission review with pod mutations as a json patch
-// in the review response
-func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
+func ServeMutate(w http.ResponseWriter, r *http.Request, mutateFunc func(admission.Admitter) (*admissionv1.AdmissionReview, error)) {
 	logger := logrus.WithField("uri", r.RequestURI)
 	logger.Debug("received mutation request")
 
@@ -97,7 +96,7 @@ func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
 		Request: in.Request,
 	}
 
-	out, err := adm.MutatePodReview()
+	out, err := mutateFunc(adm)
 	if err != nil {
 		e := fmt.Sprintf("could not generate admission response: %v", err)
 		logger.Error(e)
@@ -119,10 +118,26 @@ func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", jout)
 }
 
+// ServeMutatePods handles Pod mutation requests
+func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
+	ServeMutate(w, r, func(adm admission.Admitter) (*admissionv1.AdmissionReview, error) {
+		return adm.MutatePodReview()
+	})
+}
+
+// ServeMutateNodes handles Node mutation requests
+func ServeMutateNodes(w http.ResponseWriter, r *http.Request) {
+	ServeMutate(w, r, func(adm admission.Admitter) (*admissionv1.AdmissionReview, error) {
+		return adm.MutateNodeReview()
+	})
+}
+
 // setLogger sets the logger using env vars, it defaults to text logs on
 // debug level unless otherwise specified
 func setLogger() {
 	logrus.SetLevel(logrus.DebugLevel)
+
+	logrus.SetReportCaller(true)
 
 	lev := os.Getenv("LOG_LEVEL")
 	if lev != "" {
